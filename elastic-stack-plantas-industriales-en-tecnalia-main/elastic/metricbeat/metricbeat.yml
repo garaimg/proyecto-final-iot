@@ -1,0 +1,62 @@
+###################### Metricbeat Configuration File #######################
+
+# ======================= Elasticsearch template setting =======================
+
+setup.template.settings:
+  index.number_of_shards: 1
+  index.number_of_replicas: 0
+  index.codec: best_compression
+  #_source.enabled: false
+
+
+# ================================= Dashboards =================================
+setup.dashboards: { enabled: true,  retry: { enabled: true, interval: 10s }}
+
+
+# =================================== Kibana ===================================
+setup.kibana.host: "kibana:5601"
+
+# ================================== Outputs ===================================
+
+
+# ---------------------------- Elasticsearch Output ----------------------------
+output.elasticsearch:
+  hosts: ["elasticsearch:9200"]
+  preset: balanced
+
+
+# ================================= Processors =================================
+processors:
+  - add_host_metadata: ~
+  - add_cloud_metadata: ~
+  - add_docker_metadata: ~
+  - add_kubernetes_metadata: ~
+
+# ============================= Metricbeat modules ==============================
+metricbeat.modules:
+- module: docker
+  metricsets:
+    - "container"
+    - "cpu"
+    - "diskio"
+    - "event"
+    - "healthcheck"
+    - "info"
+    #- "image"
+    - "memory"
+    - "network"
+    #- "network_summary"
+  hosts: ["unix:///var/run/docker.sock"]
+  period: 10s
+  enabled: true
+- module: system
+  period: 10s
+  enabled: true
+  metricsets:
+    - cpu
+    - memory
+    - network
+    - process
+    - process_summary
+    - socket_summary
+    - uptime

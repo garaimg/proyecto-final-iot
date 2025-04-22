@@ -1,0 +1,137 @@
+version: '3'
+services:
+
+  script_container:
+    build:
+      context: elastic/elasticsearch
+      dockerfile: elastic/elasticsearch/Dockerfile
+    container_name: script_container
+    ports:
+      - "8000:8000"
+    restart: always
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      init-elastic:
+        condition: service_started
+    volumes:
+      - app-data:/app/data
+
+  elasticsearch:
+    container_name: es01
+    image: ${VERSION_ES}
+    environment:
+      - "discovery.type=single-node"
+      - "xpack.security.enabled=false"
+      - "xpack.ml.enabled=false"
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: '2g'
+        reservations:
+          cpus: '1.0'
+          memory: '2g'
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9200" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  kibana:
+    image: ${VERSION_KIBANA}
+    container_name: kib01
+    environment:
+      - "xpack.security.enabled=false"
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+        reservations:
+          cpus: '1.0'
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:5601/api/status" ]
+      timeout: 10s
+      retries: 5
+
+  init-elastic:
+    image: ${VERSION_ES}
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    entrypoint: [ '/bin/sh', '-c' ]
+    volumes:
+      - ./index.sh:/usr/share/elasticsearch/index.sh
+    command: |
+      "
+      echo -e 'Creating elastic Indexes'
+      chmod +x index.sh
+      ./index.sh
+      echo -e 'Indexes created'
+      "
+    user: root
+
+  logstash:
+    image: ${VERSION_LOGSTASH}
+    container_name: log
+    environment:
+      - "discovery.seed_hosts=logstash"
+      - "LS_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - ./elastic/logstash/pipelines:/usr/share/logstash/pipeline
+    ports:
+      - "5000:5000/tcp"
+      - "5001:5000/udp"
+      - "5045:5044"
+      - "9601:9600"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      init-elastic:
+        condition: service_started
+    command: logstash --path.settings /usr/share/logstash/pipeline
+
+  metricbeat:
+    image: ${VERSION_METRICBEAT}
+    container_name: metricbeat
+    user: root
+    restart: always
+    environment:
+      - system.hostfs=/hostfs
+      - ELASTICSEARCH_HOSTS=["elasticsearch:9200"]
+      - KIBANA_HOST=kibana:5601
+    volumes:
+      - ./elastic/metricbeat/metricbeat.yml:/usr/share/metricbeat/metricbeat.yml
+      - metricbeat-data:/usr/share/metricbeat/data
+      - /proc:/hostfs/proc:ro
+      - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
+      - /:/hostfs:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: metricbeat -e -strict.perms=false
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      kibana:
+        condition: service_healthy
+
+volumes:
+  elasticsearch-data:
+    driver: local
+  app-data:
+  metricbeat-data:
