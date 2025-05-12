@@ -3,8 +3,8 @@ services:
 
   script_container:
     build:
-      context: elastic/elasticsearch
-      dockerfile: elastic/elasticsearch/Dockerfile
+      context: ./elastic/elasticsearch
+      dockerfile: Dockerfile
     container_name: script_container
     ports:
       - "8000:8000"

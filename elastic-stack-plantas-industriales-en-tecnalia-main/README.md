@@ -46,7 +46,7 @@ Este módulo utiliza Metricbeat para monitorizar el servicio de Docker y ver inf
     Asegúrate de tener instalado Docker y Docker Compose.
     Clona este repositorio de Git.
     Navega al directorio del proyecto.
-    Ejecuta docker-compose up para iniciar los servicios.
+    Ejecuta docker-compose up --build para iniciar los servicios.
     Abre Kibana en tu navegador para visualizar los datos, hazlo insertando en el navegador http://localhost:5601.
 
 ## Notas Adicionales
