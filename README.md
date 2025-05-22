@@ -122,5 +122,7 @@ Para visualizar la información:
 - Inicialmente los índices generados por Metricbeat estaban ocultos, dificultando su inspección.
 - Se encontró incompatibilidad en la configuración según la versión utilizada.
 
+# Presentación
+- La presentación se encuentra en formato .pdf en la carpeta `docs/` dentro del proyecto.
 ---
 
