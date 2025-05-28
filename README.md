@@ -89,6 +89,8 @@ Para visualizar la información:
 3. Selecciona el archivo `sedes_dashboard.ndjson`.
 4. Acepta la opción "Automatically overwrite conflicts".
 
+### 5. Visualizar el dashboard importado y el creado por metricbeat (Métricas de Docker)
+
 ## Instrucciones RAG (Retrieval-Augmented Generation)
 
 Se incluye un componente de RAG (Retrieval-Augmented Generation) que permite responder preguntas sobre los datos de los sensores de las sedes recopilados en el sistema elastic cloud. De esta manera, es posible realizar preguntas en lenguaje natural como "¿Cuál fue la temperatura media obtenida por los sensores en la planta de Serbia la anterior hora?" y obtener respuestas contextualizadas.
