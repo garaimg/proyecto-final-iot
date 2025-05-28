@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Consultas a Sedes Tecnalia (RAG)</title>
+
+  <!-- Fuente moderna -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f0f4f8;
+      margin: 0;
+      padding: 2rem 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      color: #222;
+    }
+
+    h2 {
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: #3b82f6;
+      text-align: center;
+    }
+
+    label {
+      font-weight: 600;
+      margin-bottom: 0.3rem;
+      display: block;
+      color: #444;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      max-width: 600px;
+      padding: 0.5rem 0.75rem;
+      font-size: 1rem;
+      border: 2px solid #d1d5db;
+      border-radius: 6px;
+      transition: border-color 0.3s ease;
+    }
+
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 5px rgba(59,130,246,0.5);
+    }
+
+    button {
+      margin-top: 0.75rem;
+      background-color: #3b82f6;
+      color: white;
+      border: none;
+      padding: 0.55rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #2563eb;
+    }
+
+    h3 {
+      margin-top: 2rem;
+      font-weight: 600;
+      color: #3b82f6;
+      text-align: center;
+    }
+
+    #respuesta {
+      margin-top: 0.5rem;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+      max-width: 600px;
+      min-height: 150px;
+      padding: 1rem;
+      white-space: pre-wrap;
+      overflow-y: auto;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.95rem;
+      color: #111827;
+    }
+
+    @media (max-width: 640px) {
+      body {
+        padding: 1rem;
+      }
+
+      input[type="text"], #respuesta {
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h2>Consultas a Sedes de Tecnalia</h2>
+
+  <label for="pregunta">Tu pregunta:</label>
+  <input type="text" id="pregunta" placeholder="Ej: ¿Qué sede tuvo mayor temperatura ayer?" autocomplete="off" />
+  <button onclick="enviarPregunta()">Preguntar</button>
+
+  <h3>Respuesta:</h3>
+  <div id="respuesta">Aquí aparecerá la respuesta...</div>
+
+  <script>
+    const API_URL = "https://02d7-34-126-138-223.ngrok-free.app"; // Reemplaza con tu URL ngrok
+
+    const contextoFijo = `
+Eres un experto en Elasticsearch y trabajarás con un índice de sedes de Tecnalia que contiene datos ambientales de sensores. Usa solo el siguiente mapping como referencia para generar consultas Elasticsearch válidas.
+
+📦 MAPPING:
+{
+  "mappings": {
+    "properties": {
+      "sede_info": {
+        "properties": {
+          "nombre": {"type": "keyword"},
+          "coordenadas": {"type": "geo_point"}
+        }
+      },
+      "sensor_datos": {
+        "properties": {
+          "humedad": {"type": "float"},
+          "temperatura": {"type": "float"},
+          "luminosidad": {"type": "float"},
+          "presion_atm": {"type": "float"},
+          "fecha_obtencion": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss"}
+        }
+      }
+    }
+  }
+}
+
+📌 CONSIDERACIONES PARA GENERAR LA CONSULTA:
+- El índice se llama 'sedes_tecnalia'
+- Si la pregunta menciona fechas como “ayer” o “última semana”, convierte eso a rangos de fechas usando "range" sobre "sensor_datos.fecha_obtencion".
+- Usa "match" solo con texto exacto, como nombre de la sede.
+- Usa "range" con condiciones de tipo: mayor, menor, etc.
+- Si hay varios filtros, usa "bool" con "must" y/o "filter".
+- No incluyas ningún texto fuera del JSON.
+- Devuelve solo el bloque JSON válido y compatible con Elasticsearch 7+.
+`;
+
+    // Enviar contexto al iniciar
+    window.onload = async () => {
+      try {
+        await fetch(`${API_URL}/iniciar-contexto`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contexto: contextoFijo })
+        });
+        console.log("✅ Contexto de sedes cargado");
+      } catch (error) {
+        console.error("Error cargando contexto:", error);
+      }
+    };
+
+    async function enviarPregunta() {
+      const preguntaInput = document.getElementById("pregunta");
+      const respuestaDiv = document.getElementById("respuesta");
+      const pregunta = preguntaInput.value.trim();
+
+      if (!pregunta) {
+        respuestaDiv.innerText = "Por favor, escribe una pregunta antes de enviar.";
+        return;
+      }
+
+      respuestaDiv.innerText = "⏳ Procesando tu pregunta...";
+
+      try {
+        const res = await fetch(`${API_URL}/preguntar`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pregunta })
+        });
+
+        if (!res.ok) throw new Error(`Error del servidor: ${res.status}`);
+
+        const data = await res.json();
+
+        if (data.error) {
+          respuestaDiv.innerText = "❌ Error: " + data.error;
+        } else {
+          respuestaDiv.innerText = data.respuesta || "No se obtuvo respuesta.";
+        }
+      } catch (err) {
+        respuestaDiv.innerText = "❌ Error al contactar la API.";
+        console.error(err);
+      }
+    }
+  </script>
+</body>
+</html>
